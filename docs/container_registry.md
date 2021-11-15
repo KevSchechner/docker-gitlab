@@ -45,11 +45,11 @@ cd certs
 # Generate a random password password_file used in the next commands
 openssl rand -hex -out password_file 32
 # Create a PKCS#10 certificate request
-openssl req -new -passout file:password_file -newkey rsa:4096 -batch > registry.csr
+openssl req -new -passout file:password_file -newkey rsa:4096 -batch > registry-auth.csr
 # Convert RSA key
-openssl rsa -passin file:password_file -in privkey.pem -out registry.key
+openssl rsa -passin file:password_file -in privkey.pem -out registry-auth.key
 # Generate certificate
-openssl x509 -in registry.csr -out registry.crt -req -signkey registry.key -days 10000
+openssl x509 -in registry-auth.csr -out registry-auth.crt -req -signkey registry-auth.key -days 10000
 ```
 
 It doesn't matter which details (domain name, etc.) you enter during key
@@ -77,7 +77,7 @@ First add the configuration for the registry container to your `docker-compose.y
             - REGISTRY_AUTH_TOKEN_REALM=https://git.example.com/jwt/auth
             - REGISTRY_AUTH_TOKEN_SERVICE=container_registry
             - REGISTRY_AUTH_TOKEN_ISSUER=gitlab-issuer
-            - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/registry.crt
+            - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/registry-auth.crt
             - REGISTRY_STORAGE_DELETE_ENABLED=true
 ```
 
@@ -101,7 +101,7 @@ Then update the `volumes` and `environment` sections of your `gitlab` container:
             - GITLAB_REGISTRY_HOST=registry.example.com
             - GITLAB_REGISTRY_PORT=443
             - GITLAB_REGISTRY_API_URL=http://registry:5000
-            - GITLAB_REGISTRY_KEY_PATH=/certs/registry.key
+            - GITLAB_REGISTRY_KEY_PATH=/certs/registry-auth.key
 
         volumes:
             - ./gitlab:/home/git/data
@@ -166,8 +166,8 @@ gitlab:
     - GITLAB_REGISTRY_API_URL=http://registry:5000
     - GITLAB_REGISTRY_KEY_PATH=/certs/registry-auth.key
     - GITLAB_REGISTRY_ISSUER=gitlab-issuer
-    - SSL_REGISTRY_KEY_PATH=/certs/registry.key
-    - SSL_REGISTRY_CERT_PATH=/certs/registry.crt
+    - SSL_REGISTRY_KEY_PATH=/certs/registry-auth.key
+    - SSL_REGISTRY_CERT_PATH=/certs/registry-auth.crt
 ```
 
 where:
@@ -370,8 +370,8 @@ registry:2.4.1
 ```bash
 docker run --name gitlab -d [PREVIOUS_OPTIONS] \
 -v /srv/gitlab/certs:/certs \
---env 'SSL_REGISTRY_CERT_PATH=/certs/registry.crt' \
---env 'SSL_REGISTRY_KEY_PATH=/certs/registry.key' \
+--env 'SSL_REGISTRY_CERT_PATH=/certs/registry-auth.crt' \
+--env 'SSL_REGISTRY_KEY_PATH=/certs/registry-auth.key' \
 --env 'GITLAB_REGISTRY_ENABLED=true' \
 --env 'GITLAB_REGISTRY_HOST=registry.gitlab.example.com' \
 --env 'GITLAB_REGISTRY_API_URL=http://registry:5000/' \
